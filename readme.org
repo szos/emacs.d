@@ -1,4 +1,4 @@
 #+title: Her ligger emacs dotfile-ene mine
 
 * Dette er en «repo» til min egen emacs oppsett
-  ja... her er en liten tøm “readme.org” fil
+  Dette er mitt emacs oppsett. Det har ikke mailinit.el, på grunn av at det inneholder informasjon om kontoen min. 
