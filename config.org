@@ -1,0 +1,298 @@
+* Themes
+  I have been using sanityinc-tomorrow-bright for a while, but recently I decided to switch to the spacemacs themes, both light and dark variants.  Jeg bruker det lyse temaet til org modus, og det mørke temaet til alle andre modi. For å gjøre dette bruker jeg ~per-buffer-theme~ 
+#+BEGIN_SRC emacs-lisp
+  (install-unless-installed 'color-theme-sanityinc-tomorrow)
+  (require 'per-buffer-theme)
+  (setq per-buffer-theme/use-timer t
+	per-buffer-theme/timer-idle-delay 0.1
+	;; per-buffer-theme/default-theme 'sanityinc-tomorrow-bright
+	per-buffer-theme/default-theme 'spacemacs-dark
+	per-buffer-theme/themes-alist
+	'(((:theme . spacemacs-dark)
+	   (:buffernames "init.org" "config.org")
+	   (:modes nil))
+	  ((:theme . spacemacs-light)
+	   (:buffernames nil)
+	   (:modes org-mode))))
+#+END_SRC
+** TODO Bruk det mørke modus til spesifikt org buffer
+   
+** TODO Finne ut om load-theme-buffer-local faktisk fungerer
+#+BEGIN_SRC elisp
+  ;;; (load-theme-buffer-local 'sanityinc-tomorrow-bright (current-buffer))
+#+END_SRC
+
+* Frame instillinger
+  De her instillingene handler om hvordan emacs ser ut. De aktiverer visual bell, og vise kolonne tall i modus linjen. De også slå av ~scroll-bar-mode~
+#+BEGIN_SRC emacs-lisp
+  (setq visible-bell t column-number-mode t)
+  (scroll-bar-mode -1)
+#+END_SRC
+* Funksjonene mine
+  Her er funksjonene jeg har skrevet. De er ikke de beste, men de er noen å jobbe på.
+#+BEGIN_SRC emacs-lisp
+  (defun comment-out-sexp ()
+    (interactive)
+    (save-excursion
+      (mark-sexp)
+      (comment-region (region-beginning) (region-end))))
+
+  (defun comment-out-sexp-backward ()
+    (interactive)
+    (save-excursion
+      (set-mark (point))
+      (backward-sexp 1)
+      (comment-region (region-beginning) (region-end))))
+
+  (defun current-line-empty-p ()
+    (save-excursion
+      (beginning-of-line)
+      (looking-at "[[:space:]]*$")))
+#+END_SRC
+* Common Lisp
+** SLIME
+   Installerer ~SLIME~ og sett opp ~SBCL~ som den underordnet lisp. Det brukes ~slime-fancy~ også.
+#+BEGIN_SRC emacs-lisp
+  (install-unless-installed 'slime)
+  (setq inferior-lisp-program "/usr/bin/sbcl")
+  (slime-setup '(slime-repl slime-fancy))
+  (require 'slime)
+  (add-hook 'lisp-mode-hook (lambda () (slime-mode t)))
+#+END_SRC
+*** Keybindings
+    Keybindings til ~slime-repl-mode-map~:
+#+BEGIN_SRC emacs-lisp
+  (define-key slime-repl-mode-map (kbd "C-S-p") 'slime-repl-backward-input)
+  (define-key slime-repl-mode-map (kbd "C-S-n") 'slime-repl-forward-input)
+#+END_SRC
+** TODO Installerer ~SLY~ og lære å bruke det
+* Fullføring
+** Fullføringsramme
+   I dag bruker jeg ~ido~, men før brukte jeg ~helm~. Jeg har ikke prøvd ~ivy~, men jeg har hørt gode ting om det. Dette ordner ~ido~ til å aktiveres overalt.
+#+BEGIN_SRC emacs-lisp
+  (require 'ido)
+  (setq ido-enable-flex-matching     t
+	ido-everywhere            t
+	ido-use-filename-at-point 'guess)
+  (ido-mode 1)
+#+END_SRC
+** Tekst fullføring
+   Jeg har bare brukt ~company~, og det passer godt for meg. Det er nok en bedre pakke, men jeg har ikke prøvd å finne den.
+#+BEGIN_SRC emacs-lisp
+  (install-unless-installed 'company)
+  (setq company-dabbrev-downcase 0
+	company-idle-delay       .2)
+  (add-hook 'prog-mode-hook (lambda () (company-mode)))
+#+END_SRC
+* LaTeX 
+  Jeg bruker ikke latex så ofte, men jeg bruker det når noen er feil
+  med eksporteringen av en stil fra min egen stil-modus. Dette
+  installerer ~auctex~. ~doc-view-continuous~ brukes til pdf-er, men det
+  passer best å ha det her.
+#+BEGIN_SRC emacs-lisp
+  (install-unless-installed 'auctex)
+  (install-unless-installed 'auctex-latexmk)
+  (require 'tex)
+  (setq TeX-auto-save  t
+	TeX-parse-self t)
+  (setq-default TeX-master nil)
+  ;; doc-view til pdf
+  (setq doc-view-continuous t)
+#+END_SRC
+* ORG
+  Org modus er veldig viktig, og det er noen spesifikt ting jeg har
+  ordent med det. Jeg har skrevet en funksjon som gjør org til å bli
+  bedre for å skrive - det bruker bedre «bullets», og ordner større
+  «margins», og gjør tekst større. Vi også bruker ~org-pretty-table.el~
+  som gjør «tables» penere.
+#+BEGIN_SRC emacs-lisp
+  (defun set-up-org-mode ()
+    (org-bullets-mode 1) ; fancy bullets
+    (variable-pitch-mode 1) ; special, non mono, font
+    (setq header-line-format " ") ; top padding
+    (setq left-margin-width 2) ; side padding
+    (setq right-margin-width 2)
+    (set-window-buffer nil (current-buffer))
+    (text-scale-adjust 2)
+    (when (equal (buffer-name) "config.org")
+      (smartparens-strict-mode)))
+
+  (require 'org)
+  (load "~/.emacs.d/org-pretty-table.el")
+  (require 'org-pretty-table)
+  (add-hook 'org-mode-hook #'visual-line-mode)
+  (add-hook 'org-mode-hook #'set-up-org-mode)
+  (set-face-attribute 'org-table nil :inherit 'fixed-pitch)
+  (font-lock-add-keywords
+   'org-mode
+   '(("^ +\\([-*]\\) "
+      (0 (prog1 () (compose-region (match-beginning 1) (match-end 1) "•"))))))
+  (setq org-hide-emphasis-markers t
+	org-startup-indented nil
+	org-ellipsis "⬎"
+	org-pretty-entities t
+	org-fontify-whole-heading-line t
+	org-fontify-done-headline t
+	org-fontify-quote-and-verse-blocks t
+	org-src-tab-acts-natively t)
+
+  (defun my/org-mode-insert-source (language)
+    (interactive "sEnter language: ")
+    ;; (indent-for-tab-command)
+    (if (current-line-empty-p)
+	(beginning-of-line)
+      (newline 1))
+    (insert "#+BEGIN_SRC ")
+    (insert language)
+    (newline-and-indent)
+    (newline-and-indent)
+    (insert "#+END_SRC")
+    (previous-line 1)
+    (indent-for-tab-command))
+
+  (defun my/org-tab-wrapper (&optional arg)
+    ;; this function isnt working. 
+    ;; we want to have tab function in a code block like it would in a file of 
+    ;; type. currently it does this weird thing where it indents EVERY sexp 
+    ;; instead of just the one that is at point. this can be remedyed by pressing 
+    ;; TAB twice. 
+    (interactive "P")
+    (if (org-in-block-p '("src"))
+	(progn
+	  (org-cycle arg)
+	  (save-excursion
+	    (end-of-line)
+	    (backward-sexp)
+	    (mark-sexp)
+	    (org-cycle)))
+      (org-cycle arg)))
+
+  (defun my/org-mode-bold ()
+    (interactive)
+    (insert "**")
+    (backward-char 1))
+
+  (defun my/org-mode-italics ()
+    (interactive)
+    (insert "//")
+    (backward-char 1))
+
+  (defun my/org-mode-code ()
+    (interactive)
+    (insert "~~ ")
+    (backward-char 2))
+#+END_SRC
+** Keybindings
+   Keybindings til ~org-mode-map~:
+#+BEGIN_SRC emacs-lisp
+  (define-key org-mode-map (kbd "C-c b s") 'my/org-mode-insert-source)
+  (define-key org-mode-map (kbd "C-c b b") 'my/org-mode-bold)
+  (define-key org-mode-map (kbd "C-c b i") 'my/org-mode-italics)
+  (define-key org-mode-map (kbd "C-c c") 'my/org-mode-code)
+#+END_SRC
+* Andre Tekst Modi
+  Her laster vi andre tekst modi. Nå er det bare ~rtf-mode.el~, men det
+  skal kanskje bli mer.
+#+BEGIN_SRC emacs-lisp
+  (load "~/.emacs.d/rtf-mode.el")
+#+END_SRC
+* Stil Modus
+  Dette er en modus som jeg har skrevet, som er lagde for å ikke
+  kommer i veien når jeg skriver. Det er veldig lett å bruke: alt er i
+  variabler bortsett fra tittel og undertittel. Man kan bruker vanlig
+  LaTeX inne i stilen.
+#+BEGIN_SRC emacs-lisp
+  (load "~/.emacs.d/latex-essay.el")
+
+  (setq *essay-latex-heading*
+	"\\usepackage[utf8]{inputenc}
+  \\usepackage[T1]{fontenc}
+  \\usepackage{graphicx}
+  \\usepackage{grffile}
+  \\usepackage{longtable}
+  \\usepackage{wrapfig}
+  \\usepackage{rotating}
+  \\usepackage[normalem]{ulem}
+  \\usepackage{amsmath}
+  \\usepackage{textcomp}
+  \\usepackage{amssymb}
+  \\usepackage{capt-of}
+  \\usepackage{hyperref}
+  \\usepackage[margin=%scm]{geometry}
+  \\usepackage{setspace}
+  \\usepackage[ddmmyyyy]{datetime}
+  \\renewcommand{\\dateseparator}{.}
+
+  \\addtolength{\\topmargin}{%scm}
+  \\addtolength{\\textheight}{%scm}
+  \\setcounter{secnumdepth}{0}
+  \\author{%s}
+  \\date{\\today}
+  \\title{%s}
+  \\subtitle{%s}
+  ")
+  (setq *essay-latex-title* ""
+	,*essay-latex-subtitle* ""
+	,*essay-latex-author* "Nathan Shostek"
+	,*essay-latex-margins* 2
+	,*essay-latex-add-topmargin* 0
+	,*essay-latex-add-textheight* 1
+	,*essay-latex-wrap-text*
+	'(("\\begin{doublespace}" . "\\end{doublespace}") ("\\Large" . "\\normalsize")))
+
+  (add-to-list 'auto-mode-alist '("\\.latel'" . essay-mode))
+  (add-hook 'essay-mode-hook #'visual-line-mode)
+#+END_SRC
+** TODO fil Utvidelse
+   ~latex-essay.el~ er ikke slått på når man åpner en ~.latel~ fil. 
+* Magit
+  Lader ~magit~, det er alt. 
+#+BEGIN_SRC emacs-lisp
+  (install-unless-installed 'magit)
+#+END_SRC
+* LISP hjelpemodi
+  De her modi er brukt for å hjelpe man programmerer i LISP språkfamilien.
+** Smartparens
+   Smartparens hjelper man til å alltid har en ~)~ til hver ~(~. 
+#+BEGIN_SRC emacs-lisp
+  (install-unless-installed-and-require 'smartparens)
+  (sp-pair "`" nil :actions :rem)
+  (sp-pair "'" nil :actions :rem)
+  (add-hook 'prog-mode-hook #'smartparens-mode)
+  (add-hook 'lisp-mode-hook #'smartparens-strict-mode)
+  (add-hook 'emacs-lisp-mode-hook #'smartparens-strict-mode)
+#+END_SRC
+*** Keybindings 
+    Keybindings til ~smartparens-mode-map~:
+#+BEGIN_SRC emacs-lisp
+  (define-key smartparens-mode-map (kbd "C-,") 'comment-out-sexp)
+  (define-key smartparens-mode-map (kbd "M-,") 'comment-out-sexp-backward)
+
+  (define-key smartparens-mode-map (kbd "C-(") 'sp-backward-slurp-sexp)
+  (define-key smartparens-mode-map (kbd "C-)") 'sp-forward-slurp-sexp)
+  (define-key smartparens-mode-map (kbd "M-)") 'sp-forward-barf-sexp)
+  (define-key smartparens-mode-map (kbd "M-(") 'sp-backward-barf-sexp)
+  (define-key smartparens-mode-map (kbd "C-M-f") 'sp-forward-sexp)
+  (define-key smartparens-mode-map (kbd "C-M-b") 'sp-backward-sexp)
+
+  (define-key smartparens-mode-map (kbd "C-c s") 'smartparens-strict-mode)
+#+END_SRC
+** Rainbow Delimiters
+   Rainbow Delimiters gjør hvert parentes forskjellige farger.
+#+BEGIN_SRC emacs-lisp
+  (install-unless-installed-and-require 'rainbow-delimiters)
+  (require 'cl-lib)
+  (require 'color)
+  (cl-loop for index from 1 to rainbow-delimiters-max-face-count
+	   do (let ((face
+		     (intern (format "rainbow-delimiters-depth-%d-face" index))))
+		(cl-callf color-saturate-name (face-foreground face) 30)))
+  (add-hook 'prog-mode-hook #'rainbow-delimiters-mode)
+#+END_SRC
+* Global Keybindings
+  Her stor de «global» keybindings. 
+#+BEGIN_SRC emacs-lisp
+    (global-set-key (kbd "C-c m") 'magit-status)
+
+    (global-set-key (kbd "M-ĸ") 'kill-region)
+#+END_SRC
