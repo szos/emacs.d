@@ -1,0 +1,4 @@
+#+title: Her ligger emacs dotfile-ene mine
+
+* Dette er en «repo» til min egen emacs oppsett
+  ja... her er en liten tøm “readme.org” fil
